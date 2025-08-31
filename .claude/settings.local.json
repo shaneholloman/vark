@@ -9,7 +9,10 @@
       "Bash(npm view:*)",
       "Bash(pnpm add:*)",
       "Bash(npx sharp-cli:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Read(/Users/shaneholloman/.claude/**)"
     ],
     "deny": [],
     "ask": []
