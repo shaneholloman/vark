@@ -8,7 +8,8 @@
       "Read(/Users/shaneholloman/**)",
       "Bash(npm view:*)",
       "Bash(pnpm add:*)",
-      "Bash(npx sharp-cli:*)"
+      "Bash(npx sharp-cli:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
