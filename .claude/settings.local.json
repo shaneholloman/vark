@@ -12,7 +12,13 @@
       "Bash(git add:*)",
       "WebSearch",
       "WebFetch(domain:github.com)",
-      "Read(/Users/shaneholloman/.claude/**)"
+      "Read(/Users/shaneholloman/.claude/**)",
+      "Bash(gh api:*)",
+      "Bash(gh run list:*)",
+      "Bash(git fetch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git stash:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
