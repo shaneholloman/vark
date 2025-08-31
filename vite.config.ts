@@ -14,12 +14,12 @@ export default defineConfig({
 			// Polyfill Node.js modules for browser compatibility
 			path: "path-browserify",
 			url: "url-polyfill",
-			process: "process/browser/browser",
+			process: "process/browser",
 		},
 	},
 	optimizeDeps: {
 		include: [
-			"process/browser/browser",
+			"process/browser",
 			"path-browserify", 
 			"url-polyfill",
 			"@uiw/react-md-editor",
