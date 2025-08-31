@@ -1,0 +1,617 @@
+/* Import JetBrains Mono from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;1,400;1,500&display=swap');
+
+:root {  
+  /* Light theme colors */
+  --bg-light: #f7f7f7;
+  --card-bg-light: #ffffff;
+  --text-light: #2d3748;
+  --counter-text-light: #718096;
+  --border-light: #e2e8f0;
+  --shadow-light: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  
+  /* Dark theme colors */
+  --bg-dark: #000000;
+  --card-bg-dark: #1a1a1a;
+  --text-dark: #ffffff;
+  --counter-text-dark: #cccccc;
+  --border-dark: #333333;
+  --shadow-dark: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1.5;
+  /* Prevent iOS Safari zoom on input focus */
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Prevent overscroll behavior on iOS */
+  overscroll-behavior: none;
+}
+
+body .w-md-editor-text-input {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+body {
+  overflow: hidden;
+}
+
+#app {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+/* Modern browsers with dvh support */
+@supports (height: 100dvh) {
+  #app {
+    height: 100dvh;
+  }
+}
+
+.app {
+  height: 100vh;
+  width: 100vw;
+  padding: 8px;
+  transition: background-color 0.3s ease;
+  /* Ensure content stays within safe area on iOS */
+  padding-top: max(8px, env(safe-area-inset-top, 8px));
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 8px));
+  padding-left: max(8px, env(safe-area-inset-left, 8px));
+  padding-right: max(8px, env(safe-area-inset-right, 8px));
+  box-sizing: border-box;
+}
+
+/* Modern browsers with dvh support */
+@supports (height: 100dvh) {
+  .app {
+    height: 100dvh;
+  }
+}
+
+.app.light {
+  background-color: var(--bg-light);
+  color: var(--text-light);
+}
+
+.app.dark {
+  background-color: var(--bg-dark);
+  color: var(--text-dark);
+}
+
+.editor-container {
+  height: 100%;
+  width: 100%;
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-light);
+}
+
+.app.light .editor-container {
+  background-color: var(--card-bg-light);
+  box-shadow: var(--shadow-light);
+  border: 1px solid var(--border-light);
+}
+
+.app.dark .editor-container {
+  background-color: var(--card-bg-dark);
+  box-shadow: var(--shadow-dark);
+  border: 1px solid var(--border-dark);
+}
+
+.editor-wrapper {
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+
+/* React MD Editor styles */
+.w-md-editor {
+  --md-editor-font-family: 'JetBrains Mono', monospace !important;
+  height: 100% !important;
+  border: none !important;
+  background-color: transparent !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+}
+
+.w-md-editor-text-container {
+  height: 100% !important;
+  border: none !important;
+  background: transparent !important;
+  overflow: auto !important;
+}
+
+.w-md-editor-text {
+  height: auto !important;
+  min-height: 100% !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  padding: 1.25rem !important;
+  padding-bottom: 7rem !important; /* Add extra bottom padding for scrolling whitespace */
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  resize: none !important;
+  box-sizing: border-box !important;
+  line-height: 1.5 !important;
+  /* Additional iOS zoom prevention */
+  -webkit-text-size-adjust: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.w-md-editor-text:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Ensure proper scrolling behavior */
+.w-md-editor .w-md-editor-text-container > div {
+  height: 100% !important;
+}
+
+.w-md-editor .w-md-editor-text-input {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* Prevent text overlap issues */
+.w-md-editor-text-container * {
+  box-sizing: border-box !important;
+}
+
+/* React MD Editor preview styles */
+.w-md-editor-preview {
+  height: 100% !important;
+  padding: 1.25rem !important;
+  padding-bottom: 7rem !important; /* Add extra bottom padding for scrolling whitespace */
+  border: none !important;
+  background: transparent !important;
+  overflow-y: auto !important;
+  font-family: 'JetBrains Mono', monospace !important;
+}
+
+[data-color-mode="light"] .w-md-editor-preview {
+  color: var(--text-light) !important;
+}
+
+[data-color-mode="dark"] .w-md-editor {
+  --color-border-default: var(--border-dark) !important;
+}
+
+[data-color-mode="dark"] .wmde-markdown {
+  --color-canvas-default: transparent !important;
+}
+
+[data-color-mode="dark"] .w-md-editor-preview {
+  color: var(--text-dark) !important;
+}
+[data-color-mode="light"] .w-md-editor {
+  background-color: var(--card-bg-light) !important;
+  color: var(--text-light) !important;
+}
+
+[data-color-mode="dark"] .w-md-editor {
+  background-color: var(--card-bg-dark) !important;
+  color: var(--text-dark) !important;
+}
+
+[data-color-mode="light"] .w-md-editor-text {
+  background-color: var(--card-bg-light) !important;
+  color: var(--text-light) !important;
+}
+
+[data-color-mode="dark"] .w-md-editor-text {
+  background-color: var(--card-bg-dark) !important;
+  color: var(--text-dark) !important;
+}
+
+/* Character counter */
+.character-counter {
+  display: flex;
+  align-items: center;
+  height: 32px; /* Match combined button height */
+  border-radius: 6px;
+  border: 1px solid var(--border-light);
+  background: var(--card-bg-light);
+  color: var(--text-light);
+  transition: all 0.2s ease;
+  outline: none;
+  padding: 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.app.dark .character-counter {
+  border-color: var(--border-dark);
+  background: var(--card-bg-dark);
+  color: var(--text-dark);
+}
+
+.character-counter.limit-reached {
+  color: #e53e3e !important;
+  background-color: rgba(254, 226, 226, 0.9) !important;
+  border-color: #feb2b2 !important;
+}
+
+.app.dark .character-counter.limit-reached {
+  background-color: rgba(69, 26, 26, 0.9) !important;
+  border-color: #c53030 !important;
+}
+
+.mode-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px; /* Adjusted padding to fit 32px height */
+  border: none;
+  border-right: 1px solid var(--border-light);
+  background: transparent;
+  color: inherit;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  height: 100%; /* Fill parent height */
+  box-sizing: border-box;
+}
+
+.app.dark .mode-section {
+  border-right-color: var(--border-dark);
+}
+
+.mode-section:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.character-counter.limit-reached .mode-section {
+  border-right-color: #feb2b2;
+}
+
+.app.dark .character-counter.limit-reached .mode-section {
+  border-right-color: #c53030;
+}
+
+.usage-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px; /* Adjusted padding to match mode-section */
+  opacity: 0.6;
+  color: var(--counter-text-light);
+  pointer-events: none;
+  height: 100%; /* Fill parent height */
+  box-sizing: border-box;
+}
+
+.app.dark .usage-section {
+  color: var(--counter-text-dark);
+}
+
+.character-counter.limit-reached .usage-section {
+  opacity: 0.8;
+  color: #e53e3e;
+}
+
+/* Voice Recorder Styles */
+.voice-recorder {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.api-key-input-container {
+  position: absolute;
+  bottom: 100%;
+  right: 16px; /* Align with center of caret section */
+  margin-bottom: 8px;
+  z-index: 1000;
+  transform: translateX(50%); /* Center the input above the caret */
+}
+
+.api-key-input {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 2px solid #D1D5DB;
+  background: var(--card-bg-light);
+  color: var(--text-light);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  width: 250px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.app.dark .api-key-input {
+  background: var(--card-bg-dark);
+  color: var(--text-dark);
+}
+
+.api-key-input:focus {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.validation-status {
+  position: absolute;
+  top: -20px;
+  right: 0;
+  font-size: 10px;
+  color: var(--counter-text-light);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.app.dark .validation-status {
+  color: var(--counter-text-dark);
+}
+
+.voice-recorder-controls {
+  display: flex;
+  align-items: center;
+}
+
+.combined-button {
+  display: flex;
+  align-items: center;
+  height: 32px; /* Set explicit height */
+  border-radius: 6px;
+  border: 1px solid var(--border-light);
+  background: var(--card-bg-light);
+  color: var(--text-light);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  padding: 6px 12px;
+  overflow: hidden;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.app.dark .combined-button {
+  border-color: var(--border-dark);
+  background: var(--card-bg-dark);
+  color: var(--text-dark);
+}
+
+.combined-button:hover {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: #3B82F6;
+}
+
+.combined-button.recording:hover {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: #3B82F6;
+}
+
+.combined-button.transcribing {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: #F59E0B;
+  cursor: not-allowed;
+}
+
+.combined-button.transcribing:hover {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: #F59E0B;
+}
+
+.combined-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.microphone-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-right: 6px;
+  min-width: 20px; /* Ensure consistent width */
+}
+
+.caret-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 6px;
+  border-left: 1px solid var(--border-light);
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+  min-width: 16px; /* Ensure consistent width */
+}
+
+.app.dark .caret-section {
+  border-left-color: var(--border-dark);
+}
+
+.combined-button:hover .caret-section {
+  opacity: 1;
+}
+
+.recording-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.transcribing-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.transcribing-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid #F59E0B;
+  border-radius: 50%;
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.9);
+  }
+}
+
+.caret-icon {
+  transition: transform 0.2s ease;
+}
+
+/* Editor controls container */
+.editor-controls {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 100;
+  transition: bottom 0.3s ease;
+  /* Ensure safe area for mobile devices */
+  bottom: max(12px, env(safe-area-inset-bottom, 12px));
+}
+
+/* Mobile keyboard detection and adjustment */
+@supports (height: 100dvh) {
+  .editor-controls {
+    /* Use dynamic viewport units when available */
+    bottom: max(12px, calc(100vh - 100dvh + 12px));
+  }
+}
+
+/* Additional mobile-specific adjustments */
+@media (max-width: 768px) {
+  /* Ensure proper height on mobile devices */
+  html, body {
+    height: 100%;
+    min-height: 100vh;
+  }
+  
+  #app {
+    min-height: 100vh;
+  }
+  
+  .app {
+    min-height: 100vh;
+  }
+  
+  /* iOS Safari specific fixes */
+  @supports (-webkit-touch-callout: none) {
+    #app {
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+    
+    .app {
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+  }
+  
+  .editor-controls {
+    /* Adjust position for mobile devices */
+    bottom: max(12px, env(safe-area-inset-bottom, 12px));
+    gap: 8px; /* Smaller gap on mobile */
+  }
+  
+  /* When viewport height is small (likely keyboard is open) */
+  @media (max-height: 600px) {
+    .editor-controls {
+      /* More conservative positioning when height is constrained */
+      bottom: max(16px, calc(env(keyboard-inset-height, 0px) + 16px));
+    }
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .w-md-editor-text {
+    padding: 1rem !important;
+    padding-bottom: 7rem !important; /* Keep the same bottom padding on mobile */
+    min-height: 100% !important;
+    height: auto !important;
+  }
+  
+  .w-md-editor-preview {
+    padding: 1rem !important;
+    padding-bottom: 7rem !important; /* Same padding for preview mode */
+  }
+  
+  .character-counter {
+    font-size: 11px;
+    height: 28px; /* Slightly smaller on mobile */
+  }
+  
+  .mode-section {
+    padding: 6px 10px; /* Adjusted for smaller height */
+    font-size: 11px;
+  }
+  
+  .usage-section {
+    padding: 6px 10px; /* Adjusted for smaller height */
+  }
+  
+  .combined-button {
+    height: 28px; /* Match character counter height */
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+}
+
+/* Additional styles for very small screens or when keyboard is open */
+@media (max-width: 768px) and (max-height: 600px) {
+  .w-md-editor-text {
+    /* Increase bottom padding when keyboard might be open */
+    padding-bottom: 9rem !important;
+  }
+  
+  .w-md-editor-preview {
+    /* Increase bottom padding when keyboard might be open */
+    padding-bottom: 9rem !important;
+  }
+}
