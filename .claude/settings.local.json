@@ -32,7 +32,8 @@
       "Bash(pnpm build:*)",
       "Read(/Users/shaneholloman/Desktop/**)",
       "Read(/Users/shaneholloman/Desktop/**)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(gh repo view:*)"
     ],
     "deny": [],
     "ask": []
