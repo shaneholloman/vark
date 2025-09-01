@@ -68,16 +68,37 @@ This project uses Vitest with React Testing Library for a fast, modern testing e
 ```tree
 src/
 ├── components/
-│   ├── editor.tsx    # Main editor component
-│   ├── recorder.tsx  # Voice recording component
-│   └── icon.tsx      # App icon component
-├── test/
-│   ├── setup.ts      # Test setup and global mocks
-│   ├── editor.test.tsx # Main component tests
-│   └── utils.test.ts # Utility function tests
-├── main.tsx          # App entry point
-├── style.css         # Global styles
-└── vite-env.d.ts     # Vite type definitions
+│   ├── editor.tsx           # Main markdown editor with URL storage, live preview, and virtual keyboard handling
+│   ├── recorder.tsx         # Voice recording component with multi-provider transcription support
+│   ├── icon.tsx             # SVG app icon (file-volume symbol)
+│   └── ui/                  # Complete shadcn/ui component library (50+ components)
+│       ├── button.tsx       # Button primitives
+│       ├── dialog.tsx       # Modal dialog components
+│       ├── input.tsx        # Form input components
+│       ├── select.tsx       # Dropdown selection components
+│       ├── toast.tsx        # Toast notification components
+│       └── ...              # Additional UI primitives (accordion, alert, card, etc.)
+├── providers/               # Speech-to-text provider abstraction layer
+│   ├── index.ts             # Provider factory and registry system
+│   ├── types.ts             # Common interfaces for transcription providers
+│   ├── openai.ts            # OpenAI Whisper provider implementation
+│   └── google.ts            # Google Speech-to-Text provider implementation
+├── shared/                  # Cross-platform utilities and core logic
+│   ├── compression.ts       # URL-based content storage with gzip compression
+│   ├── storage.ts           # Universal storage layer (browser localStorage + planned CLI file storage)
+│   └── types.ts             # Shared TypeScript definitions
+├── hooks/                   # React custom hooks
+│   └── use-toast.ts         # Toast notification state management
+├── lib/                     # Utility libraries
+│   └── utils.ts             # Tailwind CSS class merging utility
+├── test/                    # Test suite
+│   ├── setup.ts             # Vitest configuration and global mocks
+│   ├── editor.test.tsx      # Core editor component tests
+│   └── utils.test.ts        # Utility function tests
+├── main.tsx                 # React application entry point
+├── index.css                # Tailwind CSS directives and base styles
+├── style.css                # Custom CSS overrides for markdown editor
+└── vite-env.d.ts            # TypeScript definitions for Vite environment
 ```
 
 ## Keyboard Shortcuts
