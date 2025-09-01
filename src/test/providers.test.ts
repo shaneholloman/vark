@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { createProvider, availableProviders } from '../providers/index'
 import { OpenAIProvider } from '../providers/openai'
 import { GoogleProvider } from '../providers/google'
@@ -102,10 +102,7 @@ describe('Provider System', () => {
       const emptyKey = await provider.validateConfig({ apiKey: '' })
       expect(emptyKey).toBe(false)
       
-      // Valid length key (will fail API call but that's expected)
-      const validLengthKey = 'sk-' + 'x'.repeat(48) // Total 51 chars
-      // We can't test the actual API call without mocking, but we can verify
-      // it attempts validation with the right key length
+      // Valid length key would be 51 chars total, but we can't test actual API call without mocking
     })
 
     it('reports supported audio formats', () => {

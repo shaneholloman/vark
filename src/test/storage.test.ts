@@ -62,7 +62,7 @@ describe('UniversalStorage (with localStorage mock)', () => {
     })
 
     it('handles localStorage.getItem returning null', () => {
-      const result = storage.getProviderConfig('nonexistent')
+      const result = storage.getProviderConfig('openai' as any)
       expect(result).toBeNull()
     })
   })
