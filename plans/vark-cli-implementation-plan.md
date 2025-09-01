@@ -64,10 +64,15 @@ vark/
 │   │   ├── editor.tsx       # MODIFIED - Universal component for web + CLI
 │   │   ├── recorder.tsx     # MODIFIED - Universal component for web + CLI
 │   │   └── icon.tsx         # UNCHANGED - Web only
+│   ├── providers/           # NEW - Multi-provider transcription system
+│   │   ├── index.ts         # Provider factory and interfaces
+│   │   ├── openai.ts        # OpenAI Whisper provider
+│   │   ├── google.ts        # Google Cloud Speech-to-Text provider
+│   │   └── types.ts         # Provider-specific types
 │   ├── shared/
 │   │   ├── compression.ts   # EXTRACTED from editor.tsx
-│   │   ├── openai.ts        # EXTRACTED from recorder.tsx
-│   │   └── types.ts         # EXTRACTED - Shared interfaces
+│   │   ├── storage.ts       # Universal config/API key storage
+│   │   └── types.ts         # General app types
 │   ├── main.tsx             # UNCHANGED - Web entry point
 │   └── cli.tsx              # NEW - CLI entry point
 ├── bin/
@@ -88,7 +93,7 @@ vark/
 export const encodeContent = async (text: string, mode: 'edit' | 'live' | 'view') => {
   const data = { content: text, mode }
   const jsonString = JSON.stringify(data)
-  
+
   if (typeof window !== 'undefined') {
     // Browser: use CompressionStream
     const compressionStream = new CompressionStream('gzip')
@@ -102,24 +107,57 @@ export const encodeContent = async (text: string, mode: 'edit' | 'live' | 'view'
 }
 ```
 
-**Extract OpenAI client from recorder.tsx:**
+**Extract transcription providers into provider system:**
 
 ```typescript
-// src/shared/openai.ts
-export class UniversalOpenAIClient {
-  async transcribe(audioBlob: Blob | Buffer, apiKey: string): Promise<string> {
-    const openai = new OpenAI({ 
-      apiKey,
+// src/providers/index.ts
+export interface TranscriptionProvider {
+  name: string
+  displayName: string
+  transcribe(audio: AudioData, config: ProviderConfig): Promise<string>
+  validateConfig(config: ProviderConfig): Promise<boolean>
+  getSupportedFormats(): string[]
+}
+
+export interface ProviderConfig {
+  apiKey: string
+  [key: string]: any // Provider-specific options
+}
+
+export interface AudioData {
+  blob: Blob | Buffer
+  format: string
+}
+
+export const createProvider = (type: 'openai' | 'google'): TranscriptionProvider => {
+  switch (type) {
+    case 'openai':
+      return new OpenAIProvider()
+    case 'google':
+      return new GoogleProvider()
+    default:
+      throw new Error(`Unknown provider: ${type}`)
+  }
+}
+
+// src/providers/openai.ts
+export class OpenAIProvider implements TranscriptionProvider {
+  name = 'openai'
+  displayName = 'OpenAI Whisper'
+
+  async transcribe(audio: AudioData, config: ProviderConfig): Promise<string> {
+    const openai = new OpenAI({
+      apiKey: config.apiKey,
       dangerouslyAllowBrowser: typeof window !== 'undefined'
     })
-    
-    const audioFile = this.createAudioFile(audioBlob)
+
+    const audioFile = this.createAudioFile(audio.blob, audio.format)
     const transcription = await openai.audio.transcriptions.create({
       file: audioFile,
       model: "whisper-1",
       response_format: "text"
     })
-    
+
     return transcription
   }
 }
@@ -140,11 +178,11 @@ const isTerminal = typeof window === 'undefined'
 export default function Editor() {
   // Shared state and logic remains identical
   const [markdownValue, setMarkdownValue] = useState('')
-  
+
   if (isTerminal) {
     return <TerminalEditor value={markdownValue} onChange={setMarkdownValue} />
   }
-  
+
   return <MDEditor value={markdownValue} onChange={setMarkdownValue} />
 }
 
@@ -161,17 +199,28 @@ function TerminalEditor({ value, onChange }) {
 **Update recorder.tsx to be universal:**
 
 ```typescript
-// src/components/recorder.tsx  
-import { UniversalOpenAIClient } from '../shared/openai.js'
+// src/components/recorder.tsx
+import { createProvider, type TranscriptionProvider } from '../providers/index.js'
+import { UniversalStorage } from '../shared/storage.js'
 
 const isTerminal = typeof window === 'undefined'
 
 export default function Recorder({ onTranscription }) {
-  if (isTerminal) {
-    return <TerminalRecorder onTranscription={onTranscription} />
+  const [selectedProvider, setSelectedProvider] = useState<'openai' | 'google'>('openai')
+  const storage = new UniversalStorage()
+
+  const handleTranscription = async (audioData: AudioData) => {
+    const provider = createProvider(selectedProvider)
+    const config = storage.getProviderConfig(selectedProvider)
+    const transcription = await provider.transcribe(audioData, config)
+    onTranscription(transcription)
   }
-  
-  return <BrowserRecorder onTranscription={onTranscription} />
+
+  if (isTerminal) {
+    return <TerminalRecorder onTranscription={handleTranscription} />
+  }
+
+  return <BrowserRecorder onTranscription={handleTranscription} />
 }
 ```
 
@@ -198,7 +247,7 @@ program
         <Recorder onTranscription={handleTranscription} />
       </Box>
     )
-    
+
     render(<App />)
   })
 
@@ -283,53 +332,55 @@ https://shaneholloman.github.io/vark/#H4sIAAAAAAAAA...
 
 # Verbose mode shows compression stats
 Content: 142 characters
-Compressed: 89 bytes (37% reduction)  
+Compressed: 89 bytes (37% reduction)
 URL: https://shaneholloman.github.io/vark/#H4sIAAAAAAAAA...
 Usage: 12% of URL limit
 ```
 
 ## Implementation Phases
 
-### Phase 1: Foundation (Day 1)
+### Phase 1: Foundation
 
-1. Extract compression logic to `src/shared/compression.ts`
-2. Extract OpenAI client to `src/shared/openai.ts`
-3. Add environment detection utility
-4. Update imports in existing components
+1. Create provider system in `src/providers/` directory
+2. Extract compression logic to `src/shared/compression.ts`
+3. Create universal storage system in `src/shared/storage.ts`
+4. Extract current OpenAI code into `providers/openai.ts`
+5. Update imports in existing components
 
-### Phase 2: Universal Components (Day 2)
+### Phase 2: Multi-Provider Implementation
+
+1. Implement Google Cloud Speech-to-Text provider in `providers/google.ts`
+2. Update `recorder.tsx` to use provider system
+3. Add provider selection UI components
+4. Test both OpenAI and Google providers work identically
+
+### Phase 3: Universal Components
 
 1. Modify `editor.tsx` to detect environment and render accordingly
-2. Modify `recorder.tsx` for universal audio handling
+2. Modify `recorder.tsx` for universal audio handling with providers
 3. Add Ink dependencies and basic terminal UI components
 4. Test web app still works after modifications
 
-### Phase 3: CLI Interface (Day 3)
+### Phase 4: CLI Interface
 
 1. Create `src/cli.tsx` with Commander.js setup
 2. Implement terminal-specific UI components
 3. Add `bin/vark` executable script
 4. Configure package.json for CLI distribution
 
-### Phase 4: Terminal Features (Day 4)
+### Phase 5: Terminal Features & Polish
 
 1. Implement terminal markdown syntax highlighting
-2. Add terminal-based audio recording
+2. Add terminal-based audio recording with providers
 3. Handle stdin/file input processing
-4. Add configuration file support
-
-### Phase 5: Polish and Testing (Day 5)
-
-1. Cross-platform testing and compatibility
-2. Error handling and edge cases
-3. Documentation and help system
-4. Performance optimization
+4. Cross-platform testing and documentation
 
 ## Success Metrics
 
+- [ ] Multi-provider system supports OpenAI and Google seamlessly
 - [ ] Web app functionality unchanged after refactoring
 - [ ] CLI generates identical URLs to web app
-- [ ] Voice recording works in both environments
+- [ ] Voice recording works with both providers in both environments
 - [ ] Terminal syntax highlighting matches web quality
 - [ ] Single codebase maintains both interfaces
 - [ ] Package installs globally via npm
@@ -339,7 +390,7 @@ Usage: 12% of URL limit
 ```json
 {
   "ink": "^6.2.3",
-  "highlight.js": "^11.11.1", 
+  "highlight.js": "^11.11.1",
   "lowlight": "^3.3.0",
   "commander": "^12.0.0",
   "string-width": "^7.1.0"
