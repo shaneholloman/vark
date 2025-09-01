@@ -7,7 +7,11 @@ interface RecorderProps {
   onRecordingStart?: () => void
 }
 
-const OPENAI_API_KEY_LENGTH = 51 // OpenAI API keys are 51 characters long
+// OpenAI API keys can be different lengths:
+// - Legacy keys: 51 characters (sk-...)
+// - Project keys: ~164 characters (sk-proj-...)
+const MIN_OPENAI_API_KEY_LENGTH = 51
+const MAX_OPENAI_API_KEY_LENGTH = 200 // Generous upper bound
 const STORAGE_KEY = 'vark-openai-api-key'
 
 export default function Recorder({ onTranscription, onRecordingStart }: RecorderProps) {
@@ -21,9 +25,9 @@ export default function Recorder({ onTranscription, onRecordingStart }: Recorder
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Validate API key when it reaches the required length
+  // Validate API key when it reaches a valid length
   const validateApiKey = useCallback(async (key: string) => {
-    if (key.length !== OPENAI_API_KEY_LENGTH) return
+    if (key.length < MIN_OPENAI_API_KEY_LENGTH || key.length > MAX_OPENAI_API_KEY_LENGTH) return
 
     setKeyStatus('validating')
     try {
@@ -51,7 +55,7 @@ export default function Recorder({ onTranscription, onRecordingStart }: Recorder
     if (savedKey) {
       setApiKey(savedKey)
       // Validate the saved key
-      if (savedKey.length === OPENAI_API_KEY_LENGTH) {
+      if (savedKey.length >= MIN_OPENAI_API_KEY_LENGTH && savedKey.length <= MAX_OPENAI_API_KEY_LENGTH) {
         // Set status to validating immediately to prevent premature "enter key" message
         setKeyStatus('validating')
         validateApiKey(savedKey)
@@ -68,7 +72,7 @@ export default function Recorder({ onTranscription, onRecordingStart }: Recorder
       setKeyStatus('idle')
       // Clear key from localStorage when empty
       localStorage.removeItem(STORAGE_KEY)
-    } else if (value.length === OPENAI_API_KEY_LENGTH) {
+    } else if (value.length >= MIN_OPENAI_API_KEY_LENGTH && value.startsWith('sk-')) {
       validateApiKey(value)
     } else {
       setKeyStatus('idle')

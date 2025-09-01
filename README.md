@@ -33,6 +33,24 @@ pnpm run test:run # Run tests once
 pnpm run test:ui  # Run tests with UI
 ```
 
+## Deployment
+
+### GitHub Pages Troubleshooting
+
+If you encounter a blank white page when deploying to GitHub Pages, ensure your Pages source is configured correctly:
+
+1. Go to your repository's Settings > Pages
+2. Under "Source", select "Deploy from a branch"
+3. Choose `gh-pages` branch and `/ (root)` folder
+
+Alternatively, use the GitHub CLI:
+
+```sh
+gh api --method PUT repos/username/repo-name/pages --input - <<< '{"source":{"branch":"gh-pages","path":"/"}}'
+```
+
+This ensures GitHub Pages serves the built files from the `gh-pages` branch (where the deployment workflow publishes them) rather than the source files from the `main` branch.
+
 ## Testing
 
 This project uses Vitest with React Testing Library for a fast, modern testing experience.
@@ -66,4 +84,4 @@ src/
 
 - **Cmd + Enter**: Start/stop recording
 - **Cmd + e**: Toggle editor/split/view mode
-- for md shorcuts, see [react-md-editor](https://uiwjs.github.io/react-md-editor/)
+- for md shortcuts, see [react-md-editor](https://uiwjs.github.io/react-md-editor/)
