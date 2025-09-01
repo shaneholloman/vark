@@ -91,10 +91,7 @@ src/
 │   └── use-toast.ts         # Toast notification state management
 ├── lib/                     # Utility libraries
 │   └── utils.ts             # Tailwind CSS class merging utility
-├── test/                    # Test suite
-│   ├── setup.ts             # Vitest configuration and global mocks
-│   ├── editor.test.tsx      # Core editor component tests
-│   └── utils.test.ts        # Utility function tests
+├── test/                    # Test suite (TODO: needs proper implementation)
 ├── main.tsx                 # React application entry point
 ├── index.css                # Tailwind CSS directives and base styles
 ├── style.css                # Custom CSS overrides for markdown editor
