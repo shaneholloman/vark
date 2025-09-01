@@ -23,6 +23,7 @@ export default function Recorder({ onTranscription, onRecordingStart }: Recorder
   const [isTranscribing, setIsTranscribing] = useState(false)
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
   const [recordingToastId, setRecordingToastId] = useState<string | number | null>(null)
+  const [showApiKey, setShowApiKey] = useState(false)
   
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -67,6 +68,11 @@ export default function Recorder({ onTranscription, onRecordingStart }: Recorder
 
   // Handle API key input change
   const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Only update when showing real key, ignore changes when masked
+    if (!showApiKey) {
+      return
+    }
+    
     const value = e.target.value
     setApiKey(value)
     
@@ -282,6 +288,22 @@ export default function Recorder({ onTranscription, onRecordingStart }: Recorder
     }
   }
 
+  // Mask API key with dots
+  const getMaskedApiKey = (key: string) => {
+    if (!key) return ''
+    return '•'.repeat(key.length)
+  }
+
+  // Handle input focus - show real key
+  const handleInputFocus = () => {
+    setShowApiKey(true)
+  }
+
+  // Handle input blur - hide real key
+  const handleInputBlur = () => {
+    setShowApiKey(false)
+  }
+
   const getInputBorderColor = () => {
     switch (keyStatus) {
       case 'valid':
@@ -403,14 +425,18 @@ export default function Recorder({ onTranscription, onRecordingStart }: Recorder
           <input
             ref={inputRef}
             type="text"
-            value={apiKey}
+            value={showApiKey ? apiKey : getMaskedApiKey(apiKey)}
             onChange={handleApiKeyChange}
             onKeyDown={handleKeyDown}
+            onFocus={handleInputFocus}
+            onBlur={handleInputBlur}
+            readOnly={!showApiKey}
             placeholder="Enter OpenAI API Key"
             className="api-key-input"
             style={{
               borderColor: getInputBorderColor(),
-              borderWidth: '2px'
+              borderWidth: '2px',
+              cursor: showApiKey ? 'text' : 'pointer'
             }}
           />
           {keyStatus === 'validating' && (
