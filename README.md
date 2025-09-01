@@ -30,7 +30,6 @@ pnpm run build    # Build for production
 pnpm run preview  # Preview production build
 pnpm run test     # Run tests in watch mode
 pnpm run test:run # Run tests once
-pnpm run test:ui  # Run tests with UI
 ```
 
 ## Deployment
