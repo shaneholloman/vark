@@ -31,7 +31,8 @@
       "Bash(pnpm remove:*)",
       "Bash(pnpm build:*)",
       "Read(/Users/shaneholloman/Desktop/**)",
-      "Read(/Users/shaneholloman/Desktop/**)"
+      "Read(/Users/shaneholloman/Desktop/**)",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": []
