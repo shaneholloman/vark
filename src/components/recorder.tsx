@@ -207,7 +207,10 @@ export default function Recorder({ onTranscription, onRecordingStart }: Recorder
       setRecordingToastId(toastId)
     } catch (error) {
       console.error('Error starting recording:', error)
-      alert('Could not access microphone. Please check permissions.')
+      toast.error('Microphone access denied', {
+        description: 'Could not access microphone. Please check permissions.',
+        duration: 4000,
+      })
     }
   }
 
@@ -235,17 +238,26 @@ export default function Recorder({ onTranscription, onRecordingStart }: Recorder
   // Handle microphone button click
   const handleMicrophoneClick = () => {
     if (keyStatus === 'idle' || keyStatus === 'invalid') {
-      alert('Please enter a valid OpenAI API key first.')
+      toast.error('API key required', {
+        description: 'Please enter a valid OpenAI API key first.',
+        duration: 3000,
+      })
       return
     }
 
     if (keyStatus === 'validating') {
-      alert('API key is being validated, please try again in a second...')
+      toast.warning('Key validating', {
+        description: 'API key is being validated, please try again in a second...',
+        duration: 2000,
+      })
       return
     }
 
     if (keyStatus !== 'valid') {
-      alert('Please enter a valid OpenAI API key first.')
+      toast.error('API key required', {
+        description: 'Please enter a valid OpenAI API key first.',
+        duration: 3000,
+      })
       return
     }
 
@@ -375,7 +387,10 @@ export default function Recorder({ onTranscription, onRecordingStart }: Recorder
       console.log('Transcription completed:', transcription)
     } catch (error) {
       console.error('Transcription error:', error)
-      alert(`Error during transcription: ${error}`)
+      toast.error('Transcription failed', {
+        description: `Error during transcription: ${error}`,
+        duration: 4000,
+      })
     } finally {
       setIsTranscribing(false)
     }
@@ -387,7 +402,7 @@ export default function Recorder({ onTranscription, onRecordingStart }: Recorder
         <div className="api-key-input-container">
           <input
             ref={inputRef}
-            type="password"
+            type="text"
             value={apiKey}
             onChange={handleApiKeyChange}
             onKeyDown={handleKeyDown}

@@ -35,16 +35,18 @@ function Editor() {
       const viewportHeight = viewport.height
       
       // Detect if virtual keyboard is likely open
-      // A significant reduction in viewport height indicates keyboard presence
       const heightDifference = windowHeight - viewportHeight
-      const isKeyboardOpen = heightDifference > 150 // Threshold for keyboard detection
+      const isKeyboardOpen = heightDifference > 300
       
-      // Dynamically adjust the position of editor controls
-      if (editorControlsRef.current) {
+      // Only adjust for mobile/touch devices with substantial keyboard presence
+      const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+      const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+      
+      if (editorControlsRef.current && (isMobile || hasTouch)) {
         if (isKeyboardOpen) {
           // Position controls above the keyboard
           const keyboardHeight = heightDifference
-          const safeOffset = 12 // Base offset from viewport edge
+          const safeOffset = 12
           editorControlsRef.current.style.bottom = `${keyboardHeight + safeOffset}px`
         } else {
           // Reset to default position
