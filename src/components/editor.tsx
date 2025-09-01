@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import MDEditor from '@uiw/react-md-editor'
 import '@uiw/react-md-editor/markdown-editor.css'
 import { Edit3, Split, Eye } from 'lucide-react'
+import { Toaster } from 'sonner'
 import Recorder from './recorder'
 
 const MAX_URL_LENGTH = 2048 // Safe URL length limit
@@ -610,6 +611,15 @@ function Editor() {
           </div>
         </div>
       </div>
+      <Toaster theme={theme} position="top-center" toastOptions={{ 
+        style: { 
+          position: 'fixed', 
+          top: '50vh', 
+          left: '50%', 
+          transform: 'translate(-50%, -50%)',
+          zIndex: 9999
+        } 
+      }} />
     </div>
   )
 }

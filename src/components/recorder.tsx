@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Mic, ChevronDown, ChevronUp } from 'lucide-react'
+import { toast } from 'sonner'
 import OpenAI from 'openai'
 
 interface RecorderProps {
@@ -21,6 +22,7 @@ export default function Recorder({ onTranscription, onRecordingStart }: Recorder
   const [isRecording, setIsRecording] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
+  const [recordingToastId, setRecordingToastId] = useState<string | number | null>(null)
   
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -196,6 +198,13 @@ export default function Recorder({ onTranscription, onRecordingStart }: Recorder
       recorder.start()
       setMediaRecorder(recorder)
       setIsRecording(true)
+      
+      // Show persistent toast notification
+      const toastId = toast('Recording audio...', {
+        description: 'Click the microphone again to stop and transcribe',
+        duration: Infinity, // Keep it visible until manually dismissed
+      })
+      setRecordingToastId(toastId)
     } catch (error) {
       console.error('Error starting recording:', error)
       alert('Could not access microphone. Please check permissions.')
@@ -208,6 +217,18 @@ export default function Recorder({ onTranscription, onRecordingStart }: Recorder
       mediaRecorder.stop()
       setIsRecording(false)
       setMediaRecorder(null)
+      
+      // Dismiss the recording toast
+      if (recordingToastId) {
+        toast.dismiss(recordingToastId)
+        setRecordingToastId(null)
+      }
+      
+      // Show transcription toast
+      toast('Processing audio...', {
+        description: 'Converting speech to text using OpenAI Whisper',
+        duration: 2000,
+      })
     }
   }
 
