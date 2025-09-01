@@ -63,6 +63,10 @@ This project uses Vitest with React Testing Library for a fast, modern testing e
 - **@testing-library/user-event**: User interaction simulation
 - **jsdom**: Browser environment simulation
 
+### Test Suite Purpose
+
+**Important:** This test suite is NOT for validating that code works correctly. It serves as guardrails to prevent regressions when modifying existing features or adding new ones. The tests ensure that critical functionality like compression, storage, and provider interfaces don't break during refactoring or updates.
+
 ### Project Structure
 
 ```tree
@@ -91,7 +95,12 @@ src/
 │   └── use-toast.ts         # Toast notification state management
 ├── lib/                     # Utility libraries
 │   └── utils.ts             # Tailwind CSS class merging utility
-├── test/                    # Test suite (TODO: needs proper implementation)
+├── test/                    # Test suite
+│   ├── setup.ts             # Minimal test setup
+│   ├── compression.test.ts  # Real compression tests using Node.js zlib
+│   ├── providers.test.ts    # Provider factory and interface tests
+│   ├── storage.test.ts      # Storage logic tests
+│   └── utils.test.ts        # Utility function tests
 ├── main.tsx                 # React application entry point
 ├── index.css                # Tailwind CSS directives and base styles
 ├── style.css                # Custom CSS overrides for markdown editor
