@@ -11,12 +11,13 @@ import { Label } from '@/components/ui/label'
 interface RecorderProps {
   onTranscription?: (text: string) => void
   onRecordingStart?: () => void
+  onCaptureCursor?: () => void
   theme?: 'light' | 'dark'
 }
 
 const storage = new UniversalStorage()
 
-export default function Recorder({ onTranscription, onRecordingStart, theme = 'light' }: RecorderProps) {
+export default function Recorder({ onTranscription, onRecordingStart, onCaptureCursor, theme = 'light' }: RecorderProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState<ProviderType>('openai')
   const [providerConfig, setProviderConfig] = useState<ProviderConfig | null>(null)
@@ -489,6 +490,12 @@ export default function Recorder({ onTranscription, onRecordingStart, theme = 'l
                   ? 'bg-zinc-900 border-zinc-700 text-white hover:bg-blue-900/20 hover:border-blue-600'
                   : 'bg-white border-gray-200 text-gray-800 hover:bg-blue-50 hover:border-blue-500')
           } ${isTranscribing ? 'opacity-70' : ''}`}
+          onMouseDown={() => {
+            // Capture cursor position before any focus changes
+            if (onCaptureCursor) {
+              onCaptureCursor()
+            }
+          }}
           onClick={handleCombinedButtonClick}
           disabled={isTranscribing}
           title={

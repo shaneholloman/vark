@@ -214,7 +214,7 @@ export class GoogleProvider implements TranscriptionProvider {
     return 'WEBM_OPUS'
   }
 
-  private getExpectedSampleRate(mimeType: string, encoding: string): number | null {
+  private getExpectedSampleRate(_mimeType: string, encoding: string): number | null {
     // For WEBM_OPUS and OGG_OPUS, don't specify sample rate - let Google auto-detect
     if (encoding === 'WEBM_OPUS' || encoding === 'OGG_OPUS') {
       return null

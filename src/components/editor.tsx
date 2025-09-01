@@ -26,6 +26,8 @@ function Editor() {
   const currentContentRef = useRef('')
   const lastSavedModeRef = useRef<PreviewMode>('edit')
   const editorControlsRef = useRef<HTMLDivElement>(null)
+  const recordingCursorPositionRef = useRef<number>(0)
+  const lastKnownCursorPositionRef = useRef<number>(0)
 
   // Virtual keyboard detection using Visual Viewport API
   useEffect(() => {
@@ -384,12 +386,27 @@ function Editor() {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [decodeContent, encodeContent, updatePageTitle])
 
-  // Add event listeners for immediate saving on blur and mouse movement
+  // Add event listeners for immediate saving, cursor tracking  
   useEffect(() => {
     let hasMouseMoved = false
     
-    const handleBlur = () => {
-      console.log('Blur event triggered, hasUnsavedChanges:', hasUnsavedChangesRef.current)
+    const updateCursorPosition = (textarea: HTMLTextAreaElement) => {
+      if (textarea === document.activeElement) {
+        lastKnownCursorPositionRef.current = textarea.selectionStart || 0
+        console.log('Updated cursor position:', lastKnownCursorPositionRef.current)
+      }
+    }
+    
+    const handleBlur = (e: Event) => {
+      const textarea = e.target as HTMLTextAreaElement
+      // Capture cursor position before losing focus
+      const cursorPos = textarea.selectionStart || 0
+      recordingCursorPositionRef.current = cursorPos
+      console.log('*** BLUR EVENT FIRED ***')
+      console.log('Blur: captured cursor position for recording:', cursorPos)
+      console.log('Textarea value length:', textarea.value.length)
+      console.log('************************')
+      
       if (hasUnsavedChangesRef.current) {
         saveImmediately()
       }
@@ -398,7 +415,6 @@ function Editor() {
     const handleMouseMove = () => {
       if (!hasMouseMoved) {
         hasMouseMoved = true
-        console.log('Mouse moved, hasUnsavedChanges:', hasUnsavedChangesRef.current)
         if (hasUnsavedChangesRef.current) {
           saveImmediately()
         }
@@ -408,11 +424,21 @@ function Editor() {
     const handleFocus = () => {
       hasMouseMoved = false
     }
+
+    const handleKeyUp = (e: Event) => {
+      updateCursorPosition(e.target as HTMLTextAreaElement)
+    }
+
+    const handleClick = (e: Event) => {
+      updateCursorPosition(e.target as HTMLTextAreaElement)
+    }
     
-    // Add blur listener to the textarea specifically
-    const textarea = document.querySelector('.w-md-editor-text')
+    // Add listeners to the textarea specifically
+    const textarea = document.querySelector('.w-md-editor-text') as HTMLTextAreaElement
     if (textarea) {
       textarea.addEventListener('blur', handleBlur)
+      textarea.addEventListener('keyup', handleKeyUp)
+      textarea.addEventListener('click', handleClick)
     }
     
     // Add mouse move listener to detect user interaction elsewhere
@@ -424,11 +450,13 @@ function Editor() {
     return () => {
       if (textarea) {
         textarea.removeEventListener('blur', handleBlur)
+        textarea.removeEventListener('keyup', handleKeyUp)
+        textarea.removeEventListener('click', handleClick)
       }
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('focus', handleFocus, true)
     }
-  }, [saveImmediately]) // Only depend on saveImmediately, not markdownValue
+  }, [saveImmediately])
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -492,15 +520,63 @@ function Editor() {
       return
     }
 
-    // Use the current content from ref to avoid stale state
+    // Use the cursor position captured when recording started
     const currentValue = currentContentRef.current || ''
-    const newValue = currentValue + (currentValue ? '\n' : '') + text
+    const cursorPos = recordingCursorPositionRef.current
     
-    // Update content through React state only
+    console.log('=== INSERTION DEBUG ===')
+    console.log('Captured cursor position:', cursorPos)
+    console.log('Current content length:', currentValue.length)
+    console.log('Text around insertion point (20 chars before/after):')
+    console.log('Before:', JSON.stringify(currentValue.slice(Math.max(0, cursorPos - 20), cursorPos)))
+    console.log('After:', JSON.stringify(currentValue.slice(cursorPos, cursorPos + 20)))
+
+    // Ensure cursor position is within bounds
+    const safeCursorPos = Math.min(cursorPos, currentValue.length)
+    console.log('Safe cursor position:', safeCursorPos)
+
+    // Insert text at the captured cursor position
+    const beforeCursor = currentValue.slice(0, safeCursorPos)
+    const afterCursor = currentValue.slice(safeCursorPos)
+    
+    console.log('Before cursor length:', beforeCursor.length)
+    console.log('After cursor length:', afterCursor.length)
+    console.log('=======================')
+    
+    // Add a space before the text if needed (if not at start and previous char isn't whitespace)
+    const needsSpaceBefore = beforeCursor.length > 0 && !/\s$/.test(beforeCursor)
+    const prefix = needsSpaceBefore ? ' ' : ''
+    
+    // Add a space after the text if needed (if not at end and next char isn't whitespace)  
+    const needsSpaceAfter = afterCursor.length > 0 && !/^\s/.test(afterCursor)
+    const suffix = needsSpaceAfter ? ' ' : ''
+    
+    const newValue = beforeCursor + prefix + text + suffix + afterCursor
+    const newCursorPosition = safeCursorPos + prefix.length + text.length + suffix.length
+
+    console.log('New cursor position will be:', newCursorPosition)
+
+    // Update the content
     handleContentChange(newValue)
+    
+    // Set cursor position after React updates and focus the textarea
+    setTimeout(() => {
+      const textarea = document.querySelector('.w-md-editor-text') as HTMLTextAreaElement
+      if (textarea) {
+        textarea.selectionStart = newCursorPosition
+        textarea.selectionEnd = newCursorPosition
+        textarea.focus()
+      }
+    }, 10)
   }, [handleContentChange])
 
-  // Function to trigger immediate save and cancel debounces
+  // Function called on mousedown - use the last known cursor position
+  const captureCursorPosition = useCallback(() => {
+    recordingCursorPositionRef.current = lastKnownCursorPositionRef.current
+    console.log('Mousedown on record button - using last known cursor position:', recordingCursorPositionRef.current)
+  }, [])
+
+  // Function to trigger immediate save before recording starts  
   const triggerImmediateSave = useCallback(() => {
     saveImmediately()
   }, [saveImmediately])
@@ -526,7 +602,7 @@ function Editor() {
           />
         </div>
         <div className="absolute bottom-3 right-3 flex items-center gap-3 z-25 transition-bottom duration-300" ref={editorControlsRef}>
-          <Recorder onTranscription={handleTranscription} onRecordingStart={triggerImmediateSave} theme={theme} />
+          <Recorder onTranscription={handleTranscription} onRecordingStart={triggerImmediateSave} onCaptureCursor={captureCursorPosition} theme={theme} />
           <div className={`flex items-center h-8 rounded-md border overflow-hidden text-xs font-mono font-medium leading-6 box-border transition-all duration-200 outline-none ${
             isLimitReached 
               ? (theme === 'dark' ? 'text-red-400 bg-red-900/20 border-red-700' : 'text-red-600 bg-red-50 border-red-200')
