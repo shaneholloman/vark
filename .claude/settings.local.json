@@ -22,7 +22,16 @@
       "Bash(git push:*)",
       "Read(/Users/shaneholloman/Desktop/**)",
       "WebFetch(domain:platform.openai.com)",
-      "WebFetch(domain:openai.com)"
+      "WebFetch(domain:openai.com)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx:*)",
+      "Bash(pnpm exec tailwindcss init:*)",
+      "Bash(pnpm dlx:*)",
+      "Bash(pnpm remove:*)",
+      "Bash(pnpm build:*)",
+      "Read(/Users/shaneholloman/Desktop/**)",
+      "Read(/Users/shaneholloman/Desktop/**)"
     ],
     "deny": [],
     "ask": []

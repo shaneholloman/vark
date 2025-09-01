@@ -4,6 +4,8 @@ import '@uiw/react-md-editor/markdown-editor.css'
 import { Edit3, Split, Eye } from 'lucide-react'
 import { Toaster } from 'sonner'
 import Recorder from './recorder'
+import { encodeContent, decodeContent } from '../shared/compression'
+import type { PreviewMode } from '../shared/types'
 
 const MAX_URL_LENGTH = 2048 // Safe URL length limit
 const SAVE_DELAY = 1000 // 1 second delay after typing stops
@@ -15,14 +17,14 @@ function Editor() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
   const [isLimitReached, setIsLimitReached] = useState(false)
   const [markdownValue, setMarkdownValue] = useState('')
-  const [previewMode, setPreviewMode] = useState<'edit' | 'live' | 'view'>('edit')
+  const [previewMode, setPreviewMode] = useState<PreviewMode>('edit')
   
   // Refs for debouncing and tracking
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const hasUnsavedChangesRef = useRef(false)
   const lastSavedContentRef = useRef('')
   const currentContentRef = useRef('')
-  const lastSavedModeRef = useRef<'edit' | 'live' | 'view'>('edit')
+  const lastSavedModeRef = useRef<PreviewMode>('edit')
   const editorControlsRef = useRef<HTMLDivElement>(null)
 
   // Virtual keyboard detection using Visual Viewport API
@@ -77,6 +79,13 @@ function Editor() {
     const updateTheme = (isDark: boolean) => {
       const newTheme = isDark ? 'dark' : 'light'
       setTheme(newTheme)
+      
+      // Add/remove dark class from document root for Tailwind dark mode
+      if (isDark) {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
       
       // Update theme-color meta tag immediately
       const themeColor = newTheme === 'dark' ? '#000000' : '#f7f7f7'
@@ -208,69 +217,6 @@ function Editor() {
     updatePageMetadata(content)
   }, [updatePageMetadata])
 
-  // Unicode-safe base64 encoding with compression for URL
-  const encodeContent = useCallback(async (text: string, mode: 'edit' | 'live' | 'view' = 'edit'): Promise<string> => {
-    if (!text && mode === 'edit') return ''
-    try {
-      // Create an object with both content and mode
-      const data = { content: text, mode }
-      const jsonString = JSON.stringify(data)
-      
-      // First encode to UTF-8 bytes
-      const utf8Bytes = new TextEncoder().encode(jsonString)
-      
-      // Compress using gzip
-      const compressionStream = new CompressionStream('gzip')
-      const compressedStream = new Response(utf8Bytes).body?.pipeThrough(compressionStream)
-      const compressedBytes = new Uint8Array(await new Response(compressedStream).arrayBuffer())
-      
-      // Convert to base64
-      const binaryString = Array.from(compressedBytes, byte => String.fromCharCode(byte)).join('')
-      return btoa(binaryString)
-    } catch {
-      return '' // Return empty if encoding fails
-    }
-  }, [])
-
-  // Unicode-safe base64 decoding with decompression from URL
-  const decodeContent = useCallback(async (encoded: string): Promise<{ content: string, mode: 'edit' | 'live' | 'view' }> => {
-    if (!encoded) return { content: '', mode: 'edit' }
-    try {
-      // First decode from base64
-      const binaryString = atob(encoded)
-      const compressedBytes = new Uint8Array(binaryString.length)
-      for (let i = 0; i < binaryString.length; i++) {
-        compressedBytes[i] = binaryString.charCodeAt(i)
-      }
-      
-      // Decompress using gzip
-      const decompressionStream = new DecompressionStream('gzip')
-      const decompressedStream = new Response(compressedBytes).body?.pipeThrough(decompressionStream)
-      const decompressedBytes = new Uint8Array(await new Response(decompressedStream).arrayBuffer())
-      
-      // Decode from UTF-8
-      const jsonString = new TextDecoder().decode(decompressedBytes)
-      
-      try {
-        // Try to parse as JSON (new format with mode)
-        const data = JSON.parse(jsonString)
-        if (typeof data === 'object' && data !== null && 'content' in data) {
-          return {
-            content: data.content || '',
-            mode: data.mode || 'edit'
-          }
-        }
-      } catch {
-        // If JSON parsing fails, treat as legacy format (plain text)
-        return { content: jsonString, mode: 'edit' }
-      }
-      
-      // Fallback for legacy format
-      return { content: jsonString, mode: 'edit' }
-    } catch {
-      return { content: '', mode: 'edit' } // Return empty if decoding fails
-    }
-  }, [])
 
   // Save content to URL (debounced)
   const saveToUrl = useCallback(async (content: string) => {
@@ -302,7 +248,7 @@ function Editor() {
   }, [encodeContent, updatePageTitle, previewMode])
 
   // Save content with specific mode to URL
-  const saveToUrlWithMode = useCallback(async (content: string, mode: 'edit' | 'live' | 'view') => {
+  const saveToUrlWithMode = useCallback(async (content: string, mode: PreviewMode) => {
     const encoded = await encodeContent(content, mode)
     const urlLength = encoded.length + 1 // +1 for the # character
     const remaining = MAX_URL_LENGTH - urlLength
@@ -327,7 +273,7 @@ function Editor() {
       // If over limit, mark as reached but don't save
       setIsLimitReached(true)
     }
-  }, [encodeContent, updatePageTitle])
+  }, [updatePageTitle])
 
   // Debounced save function
   const debouncedSave = useCallback((content: string) => {
@@ -521,13 +467,13 @@ function Editor() {
   }, [encodeContent, debouncedSave, previewMode])
 
   // Map our internal mode to MDEditor's expected preview type
-  const getMDEditorPreviewMode = (mode: 'edit' | 'live' | 'view'): 'edit' | 'live' | 'preview' => {
+  const getMDEditorPreviewMode = (mode: PreviewMode): 'edit' | 'live' | 'preview' => {
     if (mode === 'view') return 'preview'
     return mode
   }
 
   // Get icon for current mode
-  const getModeIcon = (mode: 'edit' | 'live' | 'view') => {
+  const getModeIcon = (mode: PreviewMode) => {
     switch (mode) {
       case 'edit':
         return <Edit3 size={14} />
@@ -567,9 +513,9 @@ function Editor() {
   }, [previewMode, saveToUrlWithMode])
 
   return (
-    <div className={`app ${theme}`} data-color-mode={theme}>
-      <div className="editor-container">
-        <div className="editor-wrapper">
+    <div className={`h-screen w-screen p-2 transition-colors duration-300 box-border ${theme === 'dark' ? 'bg-black text-white' : 'bg-gray-100 text-gray-800'}`} data-color-mode={theme}>
+      <div className={`h-full w-full relative rounded-xl overflow-hidden transition-all duration-300 ${theme === 'dark' ? 'bg-zinc-900 shadow-2xl border border-zinc-800' : 'bg-white shadow-xl border border-gray-200'}`}>
+        <div className="h-full w-full relative">
           <MDEditor
             value={markdownValue}
             onChange={handleContentChange}
@@ -579,11 +525,23 @@ function Editor() {
             preview={getMDEditorPreviewMode(previewMode)}
           />
         </div>
-        <div className="editor-controls" ref={editorControlsRef}>
-          <Recorder onTranscription={handleTranscription} onRecordingStart={triggerImmediateSave} />
-          <div className={`character-counter ${isLimitReached ? 'limit-reached' : ''}`}>
+        <div className="absolute bottom-3 right-3 flex items-center gap-3 z-25 transition-bottom duration-300" ref={editorControlsRef}>
+          <Recorder onTranscription={handleTranscription} onRecordingStart={triggerImmediateSave} theme={theme} />
+          <div className={`flex items-center h-8 rounded-md border overflow-hidden text-xs font-mono font-medium leading-6 box-border transition-all duration-200 outline-none ${
+            isLimitReached 
+              ? (theme === 'dark' ? 'text-red-400 bg-red-900/20 border-red-700' : 'text-red-600 bg-red-50 border-red-200')
+              : (theme === 'dark' ? 'border-zinc-700 bg-zinc-900 text-white' : 'border-gray-200 bg-white text-gray-800')
+          }`}>
             <button 
-              className="mode-section"
+              className={`flex items-center justify-center gap-1.5 px-3 border-none transition-all duration-200 outline-none h-full box-border cursor-pointer font-mono text-xs font-medium ${
+                theme === 'dark' 
+                  ? 'border-r border-zinc-700 bg-transparent text-white hover:bg-blue-900/20' 
+                  : 'border-r border-gray-200 bg-transparent text-gray-800 hover:bg-blue-50'
+              } ${
+                isLimitReached 
+                  ? (theme === 'dark' ? 'border-r border-red-700' : 'border-r border-red-200')
+                  : ''
+              }`}
               title="Press Ctrl+E or Cmd+E to cycle through edit modes"
               onClick={() => {
                 setPreviewMode(prev => {
@@ -607,7 +565,13 @@ function Editor() {
               {getModeIcon(previewMode)}
               {previewMode}
             </button>
-            <span className="usage-section">
+            <span className={`flex items-center justify-center px-3 opacity-60 pointer-events-none h-full box-border ${
+              theme === 'dark' ? 'text-zinc-400' : 'text-gray-600'
+            } ${
+              isLimitReached 
+                ? (theme === 'dark' ? 'opacity-80 text-red-400' : 'opacity-80 text-red-600')
+                : ''
+            }`}>
               {usagePercentage}% used
             </span>
           </div>

@@ -1,97 +1,132 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Mic, ChevronDown, ChevronUp } from 'lucide-react'
 import { toast } from 'sonner'
-import OpenAI from 'openai'
+import { createProvider, availableProviders, type ProviderType, type TranscriptionProvider } from '../providers/index'
+import { UniversalStorage } from '../shared/storage'
+import type { AudioData, ProviderConfig } from '../providers/types'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 interface RecorderProps {
   onTranscription?: (text: string) => void
   onRecordingStart?: () => void
+  theme?: 'light' | 'dark'
 }
 
-// OpenAI API keys can be different lengths:
-// - Legacy keys: 51 characters (sk-...)
-// - Project keys: ~164 characters (sk-proj-...)
-const MIN_OPENAI_API_KEY_LENGTH = 51
-const MAX_OPENAI_API_KEY_LENGTH = 200 // Generous upper bound
-const STORAGE_KEY = 'vark-openai-api-key'
+const storage = new UniversalStorage()
 
-export default function Recorder({ onTranscription, onRecordingStart }: RecorderProps) {
+export default function Recorder({ onTranscription, onRecordingStart, theme = 'light' }: RecorderProps) {
   const [isExpanded, setIsExpanded] = useState(false)
-  const [apiKey, setApiKey] = useState('')
-  const [keyStatus, setKeyStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle')
+  const [selectedProvider, setSelectedProvider] = useState<ProviderType>('openai')
+  const [providerConfig, setProviderConfig] = useState<ProviderConfig | null>(null)
+  const [configStatus, setConfigStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid' | 'restricted'>('idle')
   const [isRecording, setIsRecording] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
   const [recordingToastId, setRecordingToastId] = useState<string | number | null>(null)
-  const [showApiKey, setShowApiKey] = useState(false)
+  const [showConfig, setShowConfig] = useState(false)
+  const [provider, setProvider] = useState<TranscriptionProvider | null>(null)
   
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Validate API key when it reaches a valid length
-  const validateApiKey = useCallback(async (key: string) => {
-    if (key.length < MIN_OPENAI_API_KEY_LENGTH || key.length > MAX_OPENAI_API_KEY_LENGTH) return
-
-    setKeyStatus('validating')
-    try {
-      const openai = new OpenAI({ 
-        apiKey: key,
-        dangerouslyAllowBrowser: true // For client-side usage
-      })
-      
-      // Test the API key with a minimal request
-      await openai.models.list()
-      setKeyStatus('valid')
-      // Save the valid key to localStorage
-      localStorage.setItem(STORAGE_KEY, key)
-    } catch (error) {
-      console.error('API key validation failed:', error)
-      setKeyStatus('invalid')
-      // Remove invalid key from localStorage
-      localStorage.removeItem(STORAGE_KEY)
-    }
-  }, [])
-
-  // Load API key from localStorage on mount
+  // Initialize provider on mount or when selection changes
   useEffect(() => {
-    const savedKey = localStorage.getItem(STORAGE_KEY)
-    if (savedKey) {
-      setApiKey(savedKey)
-      // Validate the saved key
-      if (savedKey.length >= MIN_OPENAI_API_KEY_LENGTH && savedKey.length <= MAX_OPENAI_API_KEY_LENGTH) {
-        // Set status to validating immediately to prevent premature "enter key" message
-        setKeyStatus('validating')
-        validateApiKey(savedKey)
+    const initializeProvider = async () => {
+      try {
+        const newProvider = await createProvider(selectedProvider)
+        setProvider(newProvider)
+        
+        // Load existing config
+        const config = storage.getProviderConfig(selectedProvider)
+        if (config) {
+          setProviderConfig(config)
+          validateProviderConfig(config, newProvider)
+        } else {
+          setProviderConfig(null)
+          setConfigStatus('idle')
+        }
+      } catch (error) {
+        console.error('Failed to initialize provider:', error)
+        setProvider(null)
       }
     }
-  }, [validateApiKey])
+    
+    initializeProvider()
+  }, [selectedProvider])
 
-  // Handle API key input change
-  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Only update when showing real key, ignore changes when masked
-    if (!showApiKey) {
+  // Validate provider configuration
+  const validateProviderConfig = useCallback(async (config: ProviderConfig, providerInstance?: TranscriptionProvider) => {
+    if (!config.apiKey) {
+      setConfigStatus('idle')
+      return
+    }
+
+    setConfigStatus('validating')
+    try {
+      const currentProvider = providerInstance || provider
+      if (currentProvider) {
+        const validationResult = await currentProvider.validateConfig(config)
+        
+        if (validationResult === true) {
+          setConfigStatus('valid')
+          storage.setProviderConfig(selectedProvider, config)
+        } else if (validationResult === 'restricted') {
+          setConfigStatus('restricted')
+          storage.setProviderConfig(selectedProvider, config) // Save the key since it's valid
+        } else {
+          setConfigStatus('invalid')
+          storage.removeProviderConfig(selectedProvider)
+        }
+      }
+    } catch (error) {
+      console.error('Config validation failed:', error)
+      setConfigStatus('invalid')
+      storage.removeProviderConfig(selectedProvider)
+    }
+  }, [provider, selectedProvider])
+
+  // Load provider config on mount
+  useEffect(() => {
+    const savedConfig = storage.getProviderConfig(selectedProvider)
+    if (savedConfig) {
+      setProviderConfig(savedConfig)
+    }
+  }, [selectedProvider])
+
+  // Handle config input changes
+  const handleConfigChange = (key: string, value: string) => {
+    if (!showConfig) {
       return
     }
     
-    const value = e.target.value
-    setApiKey(value)
+    const newConfig: ProviderConfig = { ...providerConfig, [key]: value, apiKey: key === 'apiKey' ? value : (providerConfig?.apiKey || '') }
+    setProviderConfig(newConfig)
     
     if (value.length === 0) {
-      setKeyStatus('idle')
-      // Clear key from localStorage when empty
-      localStorage.removeItem(STORAGE_KEY)
-    } else if (value.length >= MIN_OPENAI_API_KEY_LENGTH && value.startsWith('sk-')) {
-      validateApiKey(value)
-    } else {
-      setKeyStatus('idle')
+      setConfigStatus('idle')
+      storage.removeProviderConfig(selectedProvider)
+    } else if (newConfig.apiKey) {
+      validateProviderConfig(newConfig)
     }
   }
 
   // Handle click outside to collapse
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsExpanded(false)
+      const target = event.target as Node
+      
+      // Check if click is outside container
+      if (containerRef.current && !containerRef.current.contains(target)) {
+        // Don't close if clicking on Select dropdown content (portaled outside container)
+        const isSelectContent = (target as Element)?.closest('[data-radix-select-content]')
+        const isSelectViewport = (target as Element)?.closest('[data-radix-select-viewport]')
+        const isSelectItem = (target as Element)?.closest('[data-radix-select-item]')
+        
+        if (!isSelectContent && !isSelectViewport && !isSelectItem) {
+          setIsExpanded(false)
+        }
       }
     }
 
@@ -139,7 +174,7 @@ export default function Recorder({ onTranscription, onRecordingStart }: Recorder
 
     document.addEventListener('keydown', handleGlobalKeyDown)
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [keyStatus, isTranscribing, isRecording, mediaRecorder])
+  }, [configStatus, isTranscribing, isRecording, mediaRecorder])
 
   // Get supported audio format for the platform
   const getSupportedMimeType = () => {
@@ -235,7 +270,7 @@ export default function Recorder({ onTranscription, onRecordingStart }: Recorder
       
       // Show transcription toast
       toast('Processing audio...', {
-        description: 'Converting speech to text using OpenAI Whisper',
+        description: `Converting speech to text using ${provider?.displayName || selectedProvider}`,
         duration: 2000,
       })
     }
@@ -243,25 +278,25 @@ export default function Recorder({ onTranscription, onRecordingStart }: Recorder
 
   // Handle microphone button click
   const handleMicrophoneClick = () => {
-    if (keyStatus === 'idle' || keyStatus === 'invalid') {
-      toast.error('API key required', {
-        description: 'Please enter a valid OpenAI API key first.',
+    if (configStatus === 'idle' || configStatus === 'invalid') {
+      toast.error('Provider configuration required', {
+        description: `Please configure ${availableProviders[selectedProvider].displayName} first.`,
         duration: 3000,
       })
       return
     }
 
-    if (keyStatus === 'validating') {
-      toast.warning('Key validating', {
-        description: 'API key is being validated, please try again in a second...',
+    if (configStatus === 'validating') {
+      toast.warning('Validating configuration', {
+        description: 'Configuration is being validated, please try again in a moment...',
         duration: 2000,
       })
       return
     }
 
-    if (keyStatus !== 'valid') {
-      toast.error('API key required', {
-        description: 'Please enter a valid OpenAI API key first.',
+    if (configStatus !== 'valid' && configStatus !== 'restricted') {
+      toast.error('Configuration required', {
+        description: `Please configure ${availableProviders[selectedProvider].displayName} first.`,
         duration: 3000,
       })
       return
@@ -288,34 +323,27 @@ export default function Recorder({ onTranscription, onRecordingStart }: Recorder
     }
   }
 
-  // Mask API key with dots
-  const getMaskedApiKey = (key: string) => {
-    if (!key) return ''
-    return '•'.repeat(key.length)
+  // Handle provider selection
+  const handleProviderChange = (newProvider: ProviderType) => {
+    setSelectedProvider(newProvider)
   }
 
-  // Handle input focus - show real key
+  // Mask sensitive values with dots
+  const getMaskedValue = (value: string) => {
+    if (!value) return ''
+    return '•'.repeat(value.length)
+  }
+
+  // Handle input focus - show real values
   const handleInputFocus = () => {
-    setShowApiKey(true)
+    setShowConfig(true)
   }
 
-  // Handle input blur - hide real key
+  // Handle input blur - hide real values
   const handleInputBlur = () => {
-    setShowApiKey(false)
+    setShowConfig(false)
   }
 
-  const getInputBorderColor = () => {
-    switch (keyStatus) {
-      case 'valid':
-        return '#10B981' // green
-      case 'invalid':
-        return '#EF4444' // red
-      case 'validating':
-        return '#F59E0B' // yellow
-      default:
-        return '#D1D5DB' // gray
-    }
-  }
 
   // Handle combined button click
   const handleCombinedButtonClick = (e: React.MouseEvent) => {
@@ -333,63 +361,28 @@ export default function Recorder({ onTranscription, onRecordingStart }: Recorder
     }
   }
 
-  // Transcribe audio using OpenAI
+  // Transcribe audio using selected provider
   const transcribeAudio = useCallback(async (audioBlob: Blob) => {
-    if (keyStatus !== 'valid' || !apiKey) {
-      console.error('No valid API key available for transcription')
+    if ((configStatus !== 'valid' && configStatus !== 'restricted') || !providerConfig || !provider) {
+      console.error('No valid provider configuration available for transcription')
       return
     }
 
     setIsTranscribing(true)
 
     try {
-      const openai = new OpenAI({ 
-        apiKey: apiKey,
-        dangerouslyAllowBrowser: true
-      })
-
-      // Get the file extension based on the blob type
-      const getFileExtension = (mimeType: string): string => {
-        const typeMap: Record<string, string> = {
-          'audio/webm': 'webm',
-          'audio/mp4': 'mp4',
-          'audio/mpeg': 'mp3',
-          'audio/wav': 'wav',
-          'audio/ogg': 'ogg'
-        }
-        
-        // Check for exact match first
-        if (typeMap[mimeType]) {
-          return typeMap[mimeType]
-        }
-        
-        // Check for partial matches (e.g., "audio/webm;codecs=opus")
-        for (const [type, ext] of Object.entries(typeMap)) {
-          if (mimeType.includes(type)) {
-            return ext
-          }
-        }
-        
-        // Default fallback
-        return 'webm'
+      const audioData: AudioData = {
+        blob: audioBlob,
+        format: audioBlob.type
       }
 
-      const extension = getFileExtension(audioBlob.type)
-      const filename = `recording.${extension}`
+      console.log(`Transcribing with ${provider.displayName}:`, audioData.format, audioBlob.size, 'bytes')
       
-      console.log('Creating audio file:', filename, 'with type:', audioBlob.type)
-      
-      const audioFile = new File([audioBlob], filename, { type: audioBlob.type })
+      const transcription = await provider.transcribe(audioData, providerConfig)
 
-      const transcription = await openai.audio.transcriptions.create({
-        file: audioFile,
-        model: "whisper-1",
-        response_format: "text",
-      })
+      console.log('Transcription response:', transcription)
 
-      console.log('Transcription response:', transcription, 'Type:', typeof transcription)
-
-      if (onTranscription && transcription && typeof transcription === 'string' && transcription.trim()) {
+      if (onTranscription && transcription && transcription.trim()) {
         const trimmedTranscription = transcription.trim()
         
         // Use a timeout to ensure the transcription happens after any UI updates
@@ -410,71 +403,122 @@ export default function Recorder({ onTranscription, onRecordingStart }: Recorder
     } catch (error) {
       console.error('Transcription error:', error)
       toast.error('Transcription failed', {
-        description: `Error during transcription: ${error}`,
+        description: `Error with ${provider.displayName}: ${error}`,
         duration: 4000,
       })
     } finally {
       setIsTranscribing(false)
     }
-  }, [apiKey, keyStatus, onTranscription])
+  }, [providerConfig, configStatus, provider, onTranscription])
 
   return (
-    <div ref={containerRef} className="voice-recorder">
+    <div ref={containerRef} className="relative flex flex-col items-end">
       {isExpanded && (
-        <div className="api-key-input-container">
-          <input
-            ref={inputRef}
-            type="text"
-            value={showApiKey ? apiKey : getMaskedApiKey(apiKey)}
-            onChange={handleApiKeyChange}
-            onKeyDown={handleKeyDown}
-            onFocus={handleInputFocus}
-            onBlur={handleInputBlur}
-            readOnly={!showApiKey}
-            placeholder="Enter OpenAI API Key"
-            className="api-key-input"
-            style={{
-              borderColor: getInputBorderColor(),
-              borderWidth: '2px',
-              cursor: showApiKey ? 'text' : 'pointer'
-            }}
-          />
-          {keyStatus === 'validating' && (
-            <div className="validation-status">Validating...</div>
-          )}
+        <div className={`absolute bottom-full right-4 mb-2 z-50 transform translate-x-1/2 rounded-lg p-3 min-w-72 shadow-lg ${
+          theme === 'dark' 
+            ? 'bg-zinc-900 border border-zinc-700' 
+            : 'bg-white border border-gray-200'
+        }`}>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="provider-select">Provider</Label>
+              <Select value={selectedProvider} onValueChange={handleProviderChange}>
+                <SelectTrigger id="provider-select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(availableProviders).map(([key, info]) => (
+                    <SelectItem key={key} value={key}>
+                      {info.displayName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {availableProviders[selectedProvider].configFields.map((field) => (
+              <div key={field.key} className="space-y-2">
+                <Label htmlFor={field.key}>{field.label}</Label>
+                <Input
+                  id={field.key}
+                  ref={field.key === 'apiKey' ? inputRef : undefined}
+                  type={field.type === 'password' ? 'text' : field.type}
+                  value={showConfig ? (providerConfig?.[field.key] || '') : getMaskedValue(providerConfig?.[field.key] || '')}
+                  onChange={(e) => handleConfigChange(field.key, e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onFocus={handleInputFocus}
+                  onBlur={handleInputBlur}
+                  readOnly={!showConfig}
+                  placeholder={field.placeholder}
+                  className={`cursor-${showConfig ? 'text' : 'pointer'} ${
+                    configStatus === 'valid' ? 'border-green-500 focus-visible:ring-green-500' :
+                    configStatus === 'invalid' ? 'border-red-500 focus-visible:ring-red-500' :
+                    configStatus === 'validating' ? 'border-orange-500 focus-visible:ring-orange-500' :
+                    configStatus === 'restricted' ? 'border-orange-500 focus-visible:ring-orange-500' :
+                    'border-blue-500 focus-visible:ring-blue-500'
+                  }`}
+                />
+              </div>
+            ))}
+            
+            {configStatus === 'validating' && (
+              <div className={`text-sm ${theme === 'dark' ? 'text-zinc-400' : 'text-gray-500'}`}>Validating...</div>
+            )}
+            {configStatus === 'restricted' && (
+              <div className={`text-sm text-orange-400`}>
+                API key is valid but restricted. <a 
+                  href="https://console.cloud.google.com/apis/credentials" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="underline hover:text-orange-300"
+                >
+                  Remove restrictions
+                </a> or allow Speech-to-Text API.
+              </div>
+            )}
+          </div>
         </div>
       )}
       
-      <div className="voice-recorder-controls">
+      <div className="flex items-center">
         <button
-          className={`combined-button ${isRecording ? 'recording' : ''} ${isTranscribing ? 'transcribing' : ''}`}
+          className={`flex items-center h-8 rounded-md border px-3 overflow-hidden text-xs font-mono font-medium leading-6 box-border transition-all duration-200 outline-none ${
+            isTranscribing 
+              ? (theme === 'dark' ? 'bg-yellow-900/20 border-yellow-600 text-yellow-300 cursor-not-allowed' : 'bg-yellow-50 border-yellow-400 text-yellow-700 cursor-not-allowed')
+              : (theme === 'dark' 
+                  ? 'bg-zinc-900 border-zinc-700 text-white hover:bg-blue-900/20 hover:border-blue-600'
+                  : 'bg-white border-gray-200 text-gray-800 hover:bg-blue-50 hover:border-blue-500')
+          } ${isTranscribing ? 'opacity-70' : ''}`}
           onClick={handleCombinedButtonClick}
           disabled={isTranscribing}
           title={
             isTranscribing 
               ? 'Transcribing audio...' 
-              : keyStatus !== 'valid' 
-                ? 'Please enter a valid API key first' 
-                : 'Click microphone to record (or press Ctrl+Enter/Cmd+Enter), click arrow to expand'
+              : (configStatus !== 'valid' && configStatus !== 'restricted')
+                ? `Please configure ${availableProviders[selectedProvider].displayName} first` 
+                : configStatus === 'restricted'
+                  ? 'Click microphone to record (API key is valid but restricted)'
+                  : 'Click microphone to record (or press Ctrl+Enter/Cmd+Enter), click arrow to expand'
           }
         >
-          <div className="microphone-section">
+          <div className="flex items-center justify-center pr-1.5 min-w-5">
             {isTranscribing ? (
-              // Transcribing indicator with different spinner
-              <div className="transcribing-indicator">
-                <div className="transcribing-spinner" />
+              <div className="flex items-center justify-center">
+                <div className={`w-4 h-4 border-2 border-transparent rounded-full animate-spin ${
+                  theme === 'dark' ? 'border-t-yellow-400' : 'border-t-yellow-500'
+                }`} />
               </div>
             ) : isRecording ? (
-              // Recording indicator with spinner
-              <div className="recording-indicator">
-                <div className="spinner" />
+              <div className="flex items-center justify-center">
+                <div className="w-4 h-4 border-2 border-transparent border-t-current rounded-full animate-spin" />
               </div>
             ) : (
-              // Microphone icon
               <Mic size={16} />
             )}
           </div>
-          <div className="caret-section">
+          <div className={`flex items-center justify-center pl-1.5 border-l opacity-60 hover:opacity-100 transition-opacity duration-200 min-w-4 ${
+            theme === 'dark' ? 'border-zinc-700' : 'border-gray-200'
+          }`}>
             {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
           </div>
         </button>
