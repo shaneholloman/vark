@@ -1,6 +1,6 @@
 # `vark`
 
-Minimal markdown editor that lives in your browser's URL ➜ [check it out](https://shaneholloman.github.io/vark)
+Real-time markdown editor with voice transcription and URL-encoded content storage ➜ [check it out](https://shaneholloman.github.io/vark)
 
 ![screenshot](public/screenshot.png)
 

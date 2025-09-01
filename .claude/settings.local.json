@@ -20,7 +20,9 @@
       "Bash(git stash:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Read(/Users/shaneholloman/Desktop/**)"
+      "Read(/Users/shaneholloman/Desktop/**)",
+      "WebFetch(domain:platform.openai.com)",
+      "WebFetch(domain:openai.com)"
     ],
     "deny": [],
     "ask": []
